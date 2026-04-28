@@ -2,6 +2,7 @@
 #include "SmartRemove.h"  
 #include "common.h"
 // LI5HzH3tAiZ/13pXSFw4Ud0cOkEMn+RCdrbkRlg5VuJS+FkM33DmRnXW/R9UlzBUrVROhFY=
+//下载波长显示插件
 
 const std::vector<int> meatshieldHYKscq = {20, 40, 75, 60};
 const std::vector<int> meatshieldHYBscq = {0, 100, 150, 400};
@@ -24,6 +25,7 @@ void Logic() {
     Fix_Gloom(4, 7);
     Fix_Gloom(1, 7);
     Fix_Gloom(5, 7);
+    //修补蘑菇
     meatshieldHYK[0] = meatshieldHYKscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
     meatshieldHYB[0] = meatshieldHYBscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
     meatshieldGLK[0] = meatshieldGLKscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
