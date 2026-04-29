@@ -1,6 +1,6 @@
 #include "ShowWavelength/ShowWavelength.h"
-#include "SmartRemove.h"
-#include "common.h"
+#include "../SmartRemove.h"
+#include "../common.h"
 #include <array>
 #include <vector>
 
