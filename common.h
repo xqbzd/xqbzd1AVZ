@@ -1,6 +1,7 @@
 #pragma once
 #include "avz.h"
 #include <algorithm>
+#include <array>
 
 inline std::pair<int, int> GetDefenseRange(APlantType type) {
     switch (type) {
@@ -124,9 +125,12 @@ inline int Check_Zombie(auto Type = -1, int State = -1, int Row = 0, int MinAbsc
     return result;
 }
 
-inline void Use_Card(auto Type, int Row, int Col) {
-    if (AIsSeedUsable(Type) && AAsm::GetPlantRejectType(Type, Row - 1, Col - 1) == AAsm::NIL)
+inline bool Use_Card(auto Type, int Row, int Col) {
+    if (AIsSeedUsable(Type) && AAsm::GetPlantRejectType(Type, Row - 1, Col - 1) == AAsm::NIL) {
         ACard(Type, Row, Col);
+        return true;
+    }
+    return false;
 }
 
 inline void Fix_Gloom(int Row, int Col) {
@@ -159,18 +163,27 @@ inline int BloverSunValfixed(auto Type) {
 }
 
 inline void Use_Meatshield(int Row, int Col, int MaxCost = 1000) {
-    for (auto Meatshield : {AM_PUFF_SHROOM, APUFF_SHROOM, AFLOWER_POT, ASCAREDY_SHROOM, ASUN_SHROOM, ASUNFLOWER, AGARLIC, AFUME_SHROOM, ABLOVER}) {
-        if (!Check_Plant(AFLOWER_POT, Row, Col)) {
-            if (!Check_Zombie(AZOMBONI, 0, Row, -1000, Col * 80 + 5) && !Check_Zombie(ACATAPULT_ZOMBIE, 0, Row, -1000, Col * 80 + 5)) {
-                if (BloverSunValfixed(Meatshield) <= MaxCost) {
-                    if (Meatshield == ABLOVER)
-                        SafeCard(ABLOVER, Row, Col, 51);
-                    else
-                        Use_Card(Meatshield, Row, Col);
-                }
-            } else {
-                Use_Card(ABLOVER, Row, Col);
+    if (Check_Plant(AFLOWER_POT, Row, Col))
+        return;
+
+    const bool hasVehicleThreat = Check_Zombie(AZOMBONI, 0, Row, -1000, Col * 80 + 5) || Check_Zombie(ACATAPULT_ZOMBIE, 0, Row, -1000, Col * 80 + 5);
+    if (hasVehicleThreat) {
+        Use_Card(ABLOVER, Row, Col);
+        return;
+    }
+
+    static constexpr std::array<APlantType, 9> meatshields = {AM_PUFF_SHROOM, APUFF_SHROOM, AFLOWER_POT, ASCAREDY_SHROOM, ASUN_SHROOM, ASUNFLOWER, AGARLIC, AFUME_SHROOM, ABLOVER};
+    for (auto Meatshield : meatshields) {
+        const int sunVal = Meatshield == ABLOVER ? BloverSunValfixed(Meatshield) : AGetSeedSunVal(Meatshield);
+        if (sunVal > MaxCost)
+            continue;
+        if (Meatshield == ABLOVER) {
+            if (isSeedUsableOrHolding(ABLOVER)) {
+                SafeCard(ABLOVER, Row, Col, 51);
+                return;
             }
+        } else if (Use_Card(Meatshield, Row, Col)) {
+            return;
         }
     }
 }

@@ -1,43 +1,122 @@
 #include "ShowWavelength/ShowWavelength.h"
 #include "SmartRemove.h"
 #include "common.h"
+#include <array>
+#include <vector>
+
 // LI5HzH3tAiZ/13pXSFw4Ud0cOkEMn+RCdrbkRlg5VuJS+FkM33DmRnXW/R9UlzBUrVROhFY=
 
-const std::vector<int> meatshieldHYKscq = {20, 40, 65, 50};
-const std::vector<int> meatshieldHYBscq = {0, 100, 130, 400};
-const std::vector<float> meatshieldbantimescq = {0.65, 0.65, 0.65, 0.9};
-const std::vector<int> meatshieldGLKscq = {0, 5, 10, 5};
-const std::vector<int> meatshieldGLBscq = {0, 200, 400, 600};
-const std::vector<int> meatshieldCGCscq = {0, 20, 10, 5};
+namespace {
+constexpr int ROW_COUNT = 6;
+constexpr int PAD_COL = 7;
+constexpr int LIMIT_X = PAD_COL * 80 + 30 + 40 + 1;
 
-std::vector<int> meatshieldHYK = {0, 0, 0, 0, 0, 0};
-std::vector<int> meatshieldHYB = {0, 0, 0, 0, 0, 0};
-std::vector<float> meatshieldbantime = {0, 0, 0, 0, 0, 0};
-std::vector<int> meatshieldGLK = {0, 0, 0, 0, 0, 0};
-std::vector<int> meatshieldGLB = {0, 0, 0, 0, 0, 0};
-std::vector<int> meatshieldCGC = {0, 0, 0, 0, 0, 0};
-std::vector<AGrid> PumpkinPOS1 = {{2, 7}, {5, 7}, {3, 7}, {4, 7}, {1, 7}, {6, 7}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 1}, {1, 6}, {2, 6}, {3, 6}, {4, 6}, {5, 6}, {6, 6}};
+constexpr std::array<int, 4> meatshieldHYKscq = {20, 40, 65, 50};
+constexpr std::array<int, 4> meatshieldHYBscq = {0, 100, 130, 400};
+constexpr std::array<float, 4> meatshieldbantimescq = {0.65f, 0.65f, 0.65f, 0.9f};
+constexpr std::array<int, 4> meatshieldGLKscq = {0, 5, 10, 5};
+constexpr std::array<int, 4> meatshieldGLBscq = {0, 200, 400, 600};
+constexpr std::array<int, 4> meatshieldCGCscq = {0, 20, 10, 5};
+constexpr std::array<int, 5> COSTS = {0, 25, 50, 75, 100};
+constexpr std::array<int, 6> GLOOM_ROWS = {3, 4, 2, 5, 1, 6};
+constexpr std::array<int, 6> ROW_ORDER = {1, 6, 2, 5, 3, 4};
+constexpr std::array<int, 2> START_COLS = {9, 8};
+
+std::array<int, ROW_COUNT> meatshieldHYK = {};
+std::array<int, ROW_COUNT> meatshieldHYB = {};
+std::array<float, ROW_COUNT> meatshieldbantime = {};
+std::array<int, ROW_COUNT> meatshieldGLK = {};
+std::array<int, ROW_COUNT> meatshieldGLB = {};
+std::array<int, ROW_COUNT> meatshieldCGC = {};
+
+const std::array<AGrid, 17> PumpkinPOS1 = {{{2, 7}, {5, 7}, {3, 7}, {4, 7}, {1, 7}, {6, 7}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 1}, {1, 6}, {2, 6}, {3, 6}, {4, 6}, {5, 6}, {6, 6}}};
+
+struct ZombieInfo {
+    int type;
+    int state;
+    int row;
+    float abscissa;
+    int hp;
+    int oneHp;
+    float speed;
+    int slowCountdown;
+    float circulationRate;
+};
+
+struct RowScore {
+    int row;
+    int score;
+};
+
+inline bool ValidRow(int row) {
+    return 0 <= row && row < ROW_COUNT;
+}
+
+inline bool IsGiant(int type) {
+    return type == AGIGA_GARGANTUAR || type == AGARGANTUAR;
+}
+} // namespace
 
 void Logic() {
-    Fix_Gloom(3, 7);
-    Fix_Gloom(4, 7);
-    Fix_Gloom(2, 7);
-    Fix_Gloom(5, 7);
-    Fix_Gloom(1, 7);
-    Fix_Gloom(6, 7);
-    meatshieldHYK[0] = meatshieldHYKscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
-    meatshieldHYB[0] = meatshieldHYBscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
-    meatshieldGLK[0] = meatshieldGLKscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
-    meatshieldGLB[0] = meatshieldGLBscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
-    meatshieldbantime[0] = meatshieldbantimescq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)];
-    meatshieldCGC[0] = Check_Plant(AGLOOM_SHROOM, 1, 7) * (meatshieldCGCscq[Check_Plant(AGLOOM_SHROOM, 1, 7) + Check_Plant(AGLOOM_SHROOM, 2, 7)]);
-    for (int i : {1, 2, 3, 4, 5}) {
-        meatshieldHYK[i] = meatshieldHYKscq[Check_Plant(AGLOOM_SHROOM, i, 7) + Check_Plant(AGLOOM_SHROOM, i + 1, 7) + Check_Plant(AGLOOM_SHROOM, i + 2, 7)];
-        meatshieldHYB[i] = meatshieldHYBscq[Check_Plant(AGLOOM_SHROOM, i, 7) + Check_Plant(AGLOOM_SHROOM, i + 1, 7) + Check_Plant(AGLOOM_SHROOM, i + 2, 7)];
-        meatshieldGLK[i] = meatshieldGLKscq[Check_Plant(AGLOOM_SHROOM, i, 7) + Check_Plant(AGLOOM_SHROOM, i + 1, 7) + Check_Plant(AGLOOM_SHROOM, i + 2, 7)];
-        meatshieldGLB[i] = meatshieldGLBscq[Check_Plant(AGLOOM_SHROOM, i, 7) + Check_Plant(AGLOOM_SHROOM, i + 1, 7) + Check_Plant(AGLOOM_SHROOM, i + 2, 7)];
-        meatshieldbantime[i] = meatshieldbantimescq[Check_Plant(AGLOOM_SHROOM, i, 7) + Check_Plant(AGLOOM_SHROOM, i + 1, 7) + Check_Plant(AGLOOM_SHROOM, i + 2, 7)];
-        meatshieldCGC[i] = Check_Plant(AGLOOM_SHROOM, i + 1, 7) * meatshieldCGCscq[Check_Plant(AGLOOM_SHROOM, i, 7) + Check_Plant(AGLOOM_SHROOM, i + 1, 7) + Check_Plant(AGLOOM_SHROOM, i + 2, 7)];
+    for (int row : GLOOM_ROWS) {
+        Fix_Gloom(row, PAD_COL);
+    }
+
+    std::array<bool, ROW_COUNT> hasGloom7 = {};
+    std::array<bool, ROW_COUNT> hasPumpkin7 = {};
+    std::array<std::array<bool, 10>, ROW_COUNT> hasPlant = {};
+    std::array<std::array<bool, 10>, ROW_COUNT> hasPumpkin = {};
+    std::array<std::array<int, 10>, ROW_COUNT> pumpkinHp = {};
+    for (auto& Plant : aAlivePlantFilter) {
+        const int row = Plant.Row();
+        const int col = Plant.Col() + 1;
+        if (!ValidRow(row) || col < 1 || col > 9)
+            continue;
+        hasPlant[row][col] = true;
+        if (Plant.Type() == AGLOOM_SHROOM && col == PAD_COL)
+            hasGloom7[row] = true;
+        if (Plant.Type() == APUMPKIN) {
+            hasPumpkin[row][col] = true;
+            pumpkinHp[row][col] = Plant.Hp();
+            if (col == PAD_COL)
+                hasPumpkin7[row] = true;
+        }
+    }
+
+    for (int row = 0; row < ROW_COUNT; ++row) {
+        int gloomCount = hasGloom7[row] ? 1 : 0;
+        if (row == 0) {
+            gloomCount += hasGloom7[1] ? 1 : 0;
+        } else {
+            gloomCount += hasGloom7[row - 1] ? 1 : 0;
+            if (row + 1 < ROW_COUNT)
+                gloomCount += hasGloom7[row + 1] ? 1 : 0;
+        }
+        meatshieldHYK[row] = meatshieldHYKscq[gloomCount];
+        meatshieldHYB[row] = meatshieldHYBscq[gloomCount];
+        meatshieldGLK[row] = meatshieldGLKscq[gloomCount];
+        meatshieldGLB[row] = meatshieldGLBscq[gloomCount];
+        meatshieldbantime[row] = meatshieldbantimescq[gloomCount];
+        meatshieldCGC[row] = (hasGloom7[row] ? 1 : 0) * meatshieldCGCscq[gloomCount];
+    }
+
+    static std::vector<ZombieInfo> zombies;
+    zombies.clear();
+    zombies.reserve(64);
+    std::array<float, ROW_COUNT> leftmostGiantX = {};
+    leftmostGiantX.fill(10000.0f);
+
+    for (auto& Zombie : aAliveZombieFilter) {
+        const int type = Zombie.Type();
+        const int state = Zombie.State();
+        const int row = Zombie.Row();
+        const float abscissa = Zombie.Abscissa();
+        float circulationRate = 0.0f;
+        if (IsGiant(type) && state == 70)
+            circulationRate = AGetPvzBase()->AnimationMain()->AnimationOffset()->AnimationArray()[Zombie.MRef<uint16_t>(0x118)].CirculationRate();
+        if (IsGiant(type) && ValidRow(row) && -1000 <= abscissa && abscissa <= 1000 && abscissa < leftmostGiantX[row])
+            leftmostGiantX[row] = abscissa;
+        zombies.push_back({type, state, row, abscissa, Zombie.Hp(), Zombie.OneHp(), Zombie.Speed(), Zombie.SlowCountdown(), circulationRate});
     }
 
     for (auto& Item : aAlivePlaceItemFilter) {
@@ -48,104 +127,91 @@ void Logic() {
     }
 
     if (AIsSeedUsable(APUMPKIN)) {
-        std::vector<AGrid> PumpkinPOS1Now = {};
-        for (auto& Grid : PumpkinPOS1) {
-            if (Check_Zombie(AGIGA_GARGANTUAR, -1, Grid.row, -1000, Grid.col * 80 + 40 + 1 + 40) || Check_Zombie(AGARGANTUAR, -1, Grid.row, -1000, Grid.col * 80 + 40 + 1 + 40)) {
-                continue;
-            }
-            if (Check_Plant(-1, Grid.row, Grid.col) == 0) {
-                continue;
-            }
-            PumpkinPOS1Now.push_back(Grid);
-        }
         AGrid mingrid = {0, 0};
         int minhp = 2000;
-        for (auto& Grid : PumpkinPOS1Now) {
-            if (Check_Plant(APUMPKIN, Grid.row, Grid.col) == 0) {
+        for (auto& Grid : PumpkinPOS1) {
+            const int row = Grid.row - 1;
+            if (!ValidRow(row))
+                continue;
+            if (leftmostGiantX[row] <= Grid.col * 80 + 40 + 1 + 40)
+                continue;
+            if (!hasPlant[row][Grid.col])
+                continue;
+            if (!hasPumpkin[row][Grid.col]) {
                 minhp = 0;
                 mingrid = Grid;
                 break;
             }
-            if (AGetPlantPtr(Grid.row, Grid.col, APUMPKIN)->Hp() < minhp) {
-                minhp = AGetPlantPtr(Grid.row, Grid.col, APUMPKIN)->Hp();
+            const int hp = pumpkinHp[row][Grid.col];
+            if (hp < minhp) {
+                minhp = hp;
                 mingrid = Grid;
             }
         }
         if (minhp < 2000) {
-            Use_Card(APUMPKIN, mingrid.row, mingrid.col);
+            if (Use_Card(APUMPKIN, mingrid.row, mingrid.col) && mingrid.col == PAD_COL && ValidRow(mingrid.row - 1))
+                hasPumpkin7[mingrid.row - 1] = true;
         }
     }
 
-    for (int Cost : {0, 25, 50, 75, 100}) {
-        int Maxpiancha[6][2] = {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}};
-        int MaxHYpiancha[6] = {0, 0, 0, 0, 0, 0};
-        int MaxGLpiancha[6] = {0, 0, 0, 0, 0, 0};
-        int Col = 7;
-        int LimitX = Col * 80 + 30 + 40 + 1;
+    std::array<bool, ROW_COUNT> banRow = {};
+    for (auto& Zombie : zombies) {
+        if (IsGiant(Zombie.type) && ValidRow(Zombie.row) && LIMIT_X < Zombie.abscissa && Zombie.abscissa < LIMIT_X + 50 && Zombie.state == 70 && 0.1f <= Zombie.circulationRate && Zombie.circulationRate <= meatshieldbantime[Zombie.row])
+            banRow[Zombie.row] = true;
+    }
 
-        for (auto& Zombie : aAliveZombieFilter) {
-            if ((Zombie.Type() == AGIGA_GARGANTUAR || Zombie.Type() == AGARGANTUAR) && (Zombie.State() == 0) && LimitX - 20 <= Zombie.Abscissa() && Zombie.Abscissa() <= LimitX + 80) {
-                int HYpiancha;
-                if (Check_Plant(APUMPKIN, Zombie.Row() + 1, 7) == 1)
-                    HYpiancha = (Zombie.Hp() - ((Zombie.Abscissa() - LimitX) * meatshieldHYK[Zombie.Row()] * (1 + Cost * 0.02 + 0.6 * GetExtraCardCdSum() / (7 * 750) - 0.3) + meatshieldHYB[Zombie.Row()]));
-                else
-                    HYpiancha = (Zombie.Hp() - ((Zombie.Abscissa() - (LimitX - 20)) * meatshieldHYK[Zombie.Row()] * (1 + Cost * 0.02 + 0.6 * GetExtraCardCdSum() / (7 * 750) - 0.3) + meatshieldHYB[Zombie.Row()]));
-                if (HYpiancha > MaxHYpiancha[Zombie.Row()]) {
-                    MaxHYpiancha[Zombie.Row()] = HYpiancha;
-                }
-            } else if ((Zombie.Type() == AFOOTBALL_ZOMBIE) && (LimitX - 70) <= Zombie.Abscissa() && Zombie.Abscissa() <= LimitX + 30) {
-                int GLpiancha = (Zombie.Hp() + Zombie.OneHp() - ((Zombie.Abscissa() - (LimitX - 70)) * meatshieldGLK[Zombie.Row()] * (1 + Cost * 0.5 + 0.6 * GetExtraCardCdSum() / (7 * 750) - 0.3) + meatshieldGLB[Zombie.Row()]));
+    for (int Cost : COSTS) {
+        std::array<int, ROW_COUNT> MaxHYpiancha = {};
+        std::array<int, ROW_COUNT> MaxGLpiancha = {};
+        const int extraCdSum = GetExtraCardCdSum();
+        const double cdFactor = 0.6 * extraCdSum / (7 * 750) - 0.3;
+        const double hyFactor = 1 + Cost * 0.02 + cdFactor;
+        const double glFactor = 1 + Cost * 0.5 + cdFactor;
+
+        for (auto& Zombie : zombies) {
+            if (!ValidRow(Zombie.row))
+                continue;
+            if (IsGiant(Zombie.type) && Zombie.state == 0 && LIMIT_X - 20 <= Zombie.abscissa && Zombie.abscissa <= LIMIT_X + 80) {
+                const int baseX = hasPumpkin7[Zombie.row] ? LIMIT_X : LIMIT_X - 20;
+                const int HYpiancha = Zombie.hp - ((Zombie.abscissa - baseX) * meatshieldHYK[Zombie.row] * hyFactor + meatshieldHYB[Zombie.row]);
+                if (HYpiancha > MaxHYpiancha[Zombie.row])
+                    MaxHYpiancha[Zombie.row] = HYpiancha;
+            } else if (Zombie.type == AFOOTBALL_ZOMBIE && LIMIT_X - 70 <= Zombie.abscissa && Zombie.abscissa <= LIMIT_X + 30) {
+                const int GLpiancha = Zombie.hp + Zombie.oneHp - ((Zombie.abscissa - (LIMIT_X - 70)) * meatshieldGLK[Zombie.row] * glFactor + meatshieldGLB[Zombie.row]);
                 if (GLpiancha > 0) {
-                    if (Check_Plant(APUMPKIN, Zombie.Row() + 1, 7) == 0) {
-                        MaxGLpiancha[Zombie.Row()] += GLpiancha * 4;
-                    } else {
-                        MaxGLpiancha[Zombie.Row()] += GLpiancha;
-                    }
+                    if (!hasPumpkin7[Zombie.row])
+                        MaxGLpiancha[Zombie.row] += GLpiancha * 4;
+                    else
+                        MaxGLpiancha[Zombie.row] += GLpiancha;
                 }
-            } else if ((Zombie.Type() == APOLE_VAULTING_ZOMBIE) && (560) <= Zombie.Abscissa() && Zombie.Abscissa() <= 685 && Zombie.State() == 11) {
-                if (Check_Plant(APUMPKIN, Zombie.Row() + 1, 7) == 0) {
-                    MaxGLpiancha[Zombie.Row()] -= meatshieldCGC[Zombie.Row()] * 4;
-                } else {
-                    MaxGLpiancha[Zombie.Row()] -= meatshieldCGC[Zombie.Row()];
-                }
-            }
-        }
-        for (int i : {0, 1, 2, 3, 4, 5}) {
-            Maxpiancha[i][1] = MaxHYpiancha[i] * 8 + MaxGLpiancha[i];
-        }
-        for (int i = 0; i < 6; ++i) {
-            for (int j = i + 1; j < 6; ++j) {
-                if (Maxpiancha[i][1] < Maxpiancha[j][1]) {
-                    int tmp0 = Maxpiancha[i][0], tmp1 = Maxpiancha[i][1];
-                    Maxpiancha[i][0] = Maxpiancha[j][0];
-                    Maxpiancha[i][1] = Maxpiancha[j][1];
-                    Maxpiancha[j][0] = tmp0;
-                    Maxpiancha[j][1] = tmp1;
-                }
+            } else if (Zombie.type == APOLE_VAULTING_ZOMBIE && 560 <= Zombie.abscissa && Zombie.abscissa <= 685 && Zombie.state == 11) {
+                if (!hasPumpkin7[Zombie.row])
+                    MaxGLpiancha[Zombie.row] -= meatshieldCGC[Zombie.row] * 4;
+                else
+                    MaxGLpiancha[Zombie.row] -= meatshieldCGC[Zombie.row];
             }
         }
 
-        for (int Order : {0, 1, 2, 3, 4, 5}) {
-            bool ban = false;
-            for (auto& Zombie : aAliveZombieFilter) {
-                if ((Zombie.Type() == AGIGA_GARGANTUAR || Zombie.Type() == AGARGANTUAR) && Zombie.Row() == Maxpiancha[Order][0] && LimitX < Zombie.Abscissa() && Zombie.Abscissa() < LimitX + 50 && Zombie.State() == 70 && 0.1 <= AGetPvzBase()->AnimationMain()->AnimationOffset()->AnimationArray()[Zombie.MRef<uint16_t>(0x118)].CirculationRate() && AGetPvzBase()->AnimationMain()->AnimationOffset()->AnimationArray()[Zombie.MRef<uint16_t>(0x118)].CirculationRate() <= meatshieldbantime[Maxpiancha[Order][0]]) {
-                    ban = 1;
-                    break;
-                }
-            }
-            if (!ban) {
-                if (Maxpiancha[Order][1] > 0)
-                    Use_Meatshield(Maxpiancha[Order][0] + 1, 8, Cost);
-            }
-            if (Maxpiancha[Order][1] <= -80 && (Check_Plant(ABLOVER, Maxpiancha[Order][0] + 1, 8) == 0) && (Check_Plant(-1, Maxpiancha[Order][0] + 1, 8) > 0))
-                AShovel(Maxpiancha[Order][0] + 1, 8);
+        std::array<RowScore, ROW_COUNT> Maxpiancha = {};
+        for (int row = 0; row < ROW_COUNT; ++row) {
+            Maxpiancha[row] = {row, MaxHYpiancha[row] * 8 + MaxGLpiancha[row]};
+        }
+        std::sort(Maxpiancha.begin(), Maxpiancha.end(), [](const RowScore& lhs, const RowScore& rhs) {
+            return lhs.score > rhs.score;
+        });
+
+        for (auto& Score : Maxpiancha) {
+            if (!banRow[Score.row] && Score.score > 0)
+                Use_Meatshield(Score.row + 1, 8, Cost);
+            if (Score.score <= -80 && Check_Plant(ABLOVER, Score.row + 1, 8) == 0 && Check_Plant(-1, Score.row + 1, 8) > 0)
+                AShovel(Score.row + 1, 8);
         }
     }
 
-    std::vector<bool> canblover = {true, true, true, true, true};
-    for (auto& Zombie : aAliveZombieFilter) {
-        if (Zombie.Type() == ABALLOON_ZOMBIE && int(Zombie.Abscissa() - BalloonΔX(50, Zombie.Speed(), Zombie.SlowCountdown())) <= -100) {
+    for (auto& Zombie : zombies) {
+        if (Zombie.type == ABALLOON_ZOMBIE && int(Zombie.abscissa - BalloonΔX(50, Zombie.speed, Zombie.slowCountdown)) <= -100) {
             ACard(ABLOVER, 1, 1);
+            break;
         }
     }
 }
@@ -157,7 +223,7 @@ void AScript() {
     AMaidCheats::CallPartner();
     ASetGameSpeed(Speed);
     AGetInternalLogger()->SetLevel({});
-    std::vector<int> zombielist = ACreateRandomTypeList("普", "");
+    std::vector<int> zombielist = ACreateRandomTypeList("\u666E", "");
     std::erase(zombielist, 20);
     ASetZombies(zombielist, ASetZombieMode::INTERNAL);
 
@@ -178,8 +244,8 @@ void AScript() {
     smart_remove.Start();
     ShowWavelength(false, 5, true);
 
-    for (int i : {1, 6, 2, 5, 3, 4}) {
-        for (int j : {9, 8}) {
+    for (int i : ROW_ORDER) {
+        for (int j : START_COLS) {
             OnWave(1, 10) At(-599 + 751 * 2)[=] { Use_Meatshield(i, j, 25); };
             OnWave(1, 10) At(-599 + 751)[=] { Use_Meatshield(i, j, 25); };
             OnWave(1, 10) At(-599)[=] { Use_Meatshield(i, j, 25); };
@@ -187,13 +253,13 @@ void AScript() {
     }
 
     if (AGetMainObject()->CompletedRounds() % 2) {
-        for (int i : {1, 6, 2, 5, 3, 4}) {
+        for (int i : ROW_ORDER) {
             OnWave(20) At(-752 + 751 * 2)[=] { Use_Meatshield(i, 8, 25); };
             OnWave(20) At(-752 + 751)[=] { Use_Meatshield(i, 9, 25); };
             OnWave(20) At(-752)[=] { Use_Meatshield(i, 9, 25); };
         }
     } else {
-        for (int i : {1, 6, 2, 5, 3, 4}) {
+        for (int i : ROW_ORDER) {
             OnWave(20) At(-752 + 751 * 2)[=] { Use_Meatshield(i, 9, 25); };
             OnWave(20) At(-752 + 751)[=] { Use_Meatshield(i, 8, 25); };
             OnWave(20) At(-752)[=] { Use_Meatshield(i, 8, 25); };
