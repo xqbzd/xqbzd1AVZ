@@ -109,6 +109,18 @@ inline void SafeCard(APlantType PlantType, int Row, int Col, int NeedTime = 99) 
     At(now) Card(PlantType, Row, Col);
 }
 
+inline void SafeCardByJackOnly(APlantType PlantType, int Row, int Col, int NeedTime = 99) {
+    if (!isSeedUsableOrHolding(PlantType))
+        return;
+    for (auto& Zombie : aAliveZombieFilter) {
+        if (Zombie.Type() == AJACK_IN_THE_BOX_ZOMBIE && Zombie.State() == 16 && PredictExplode(&Zombie, Row, Col, PlantType) && Zombie.StateCountdown() <= NeedTime) {
+            AConnect(ANowDelayTime(1), [=] { SafeCardByJackOnly(PlantType, Row, Col, NeedTime); });
+            return;
+        }
+    }
+    At(now) Card(PlantType, Row, Col);
+}
+
 inline int Check_Plant(auto Type = -1, int Row = 0, int Col = 0, int HP = 10000) {
     int result = 0;
     for (auto& Plant : aAlivePlantFilter)
@@ -162,14 +174,20 @@ inline int BloverSunValfixed(auto Type) {
     }
 }
 
-inline void Use_Meatshield(int Row, int Col, int MaxCost = 1000) {
-    if (Check_Plant(AFLOWER_POT, Row, Col))
-        return;
+inline bool CanUseShieldAt(int Row, int Col) {
+    return !Check_Plant(AFLOWER_POT, Row, Col);
+}
 
-    const bool hasVehicleThreat = Check_Zombie(AZOMBONI, 0, Row, -1000, Col * 80 + 5) || Check_Zombie(ACATAPULT_ZOMBIE, 0, Row, -1000, Col * 80 + 5);
-    if (hasVehicleThreat) {
-        Use_Card(ABLOVER, Row, Col);
-        return;
+inline bool HasVehicleThreat(int Row, int Col) {
+    return Check_Zombie(AZOMBONI, 0, Row, -1000, Col * 80 + 5) || Check_Zombie(ACATAPULT_ZOMBIE, 0, Row, -1000, Col * 80 + 5);
+}
+
+inline bool Use_Meatshield(int Row, int Col, int MaxCost = 1000) {
+    if (!CanUseShieldAt(Row, Col))
+        return false;
+
+    if (HasVehicleThreat(Row, Col)) {
+        return Use_Card(ABLOVER, Row, Col);
     }
 
     static constexpr std::array<APlantType, 9> meatshields = {AM_PUFF_SHROOM, APUFF_SHROOM, AFLOWER_POT, ASCAREDY_SHROOM, ASUN_SHROOM, ASUNFLOWER, AGARLIC, AFUME_SHROOM, ABLOVER};
@@ -178,14 +196,25 @@ inline void Use_Meatshield(int Row, int Col, int MaxCost = 1000) {
         if (sunVal > MaxCost)
             continue;
         if (Meatshield == ABLOVER) {
-            if (isSeedUsableOrHolding(ABLOVER)) {
-                SafeCard(ABLOVER, Row, Col, 51);
-                return;
+            if (isSeedUsableOrHolding(Meatshield)) {
+                SafeCard(Meatshield, Row, Col, 51);
+                return true;
             }
         } else if (Use_Card(Meatshield, Row, Col)) {
-            return;
+            return true;
         }
     }
+    return false;
+}
+
+inline bool Use_IceShield(int Row, int Col, int = 1000) {
+    if (!CanUseShieldAt(Row, Col))
+        return false;
+    if (isSeedUsableOrHolding(AICE_SHROOM)) {
+        SafeCardByJackOnly(AICE_SHROOM, Row, Col, 100);
+        return true;
+    }
+    return false;
 }
 
 inline float BalloonΔX(int Time, float Speed, int SlowCountdown = 0) {
@@ -214,7 +243,7 @@ inline int RealSeedCD(APlantType Type) {
 inline int GetExtraCardCdSum() {
     int sum = 0;
     for (auto seed : {AM_PUFF_SHROOM, APUFF_SHROOM, AFLOWER_POT, ASCAREDY_SHROOM, ASUN_SHROOM, ASUNFLOWER, AGARLIC, AFUME_SHROOM, ABLOVER}) {
-        sum += RealSeedCD(seed);
+        sum += std::max(RealSeedCD(seed), 0);
     }
     return sum;
 }
