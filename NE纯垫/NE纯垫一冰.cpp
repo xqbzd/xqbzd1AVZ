@@ -263,7 +263,7 @@ void Logic() {
 }
 
 ATickRunner T1;
-int Speed = 5;
+int Speed = 10;
 void AScript() {
     ASetReloadMode(AReloadMode::MAIN_UI_OR_FIGHT_UI);
     AMaidCheats::CallPartner();
@@ -285,7 +285,7 @@ void AScript() {
     Cardlist.push_back(ASUNFLOWER);
     Cardlist.resize(10);
     ASelectCards(Cardlist, 1);
-    // AConnect([] { return AGetMainObject()->GameClock() % 50 == 1; }, [] { ASkipTick([] { return AGetMainObject()->GameClock() % 50 != 0; }); });
+    AConnect([] { return AGetMainObject()->GameClock() % 50 == 1; }, [] { ASkipTick([] { return AGetMainObject()->GameClock() % 50 != 0; }); });
 
     T1.Start(Logic, ATickRunner::GLOBAL);
     smart_remove.Start();
@@ -302,14 +302,20 @@ void AScript() {
     if (AGetMainObject()->CompletedRounds() % 2) {
         for (int i : ROWS_1_TO_5) {
             OnWave(20) At(-752 + 751 * 2)[=] { Use_Meatshield(i, 8, 25); };
-            OnWave(20) At(-752 + 751)[=] { Use_Meatshield(i, 9, 25); };
+            OnWave(20) At(-752 + 751)[=] {
+                Use_Meatshield(i, 9, 25);
+            };
+            OnWave(20) At(-752 + 751) Shovel(3, 8);
             OnWave(20) At(-752)[=] { Use_Meatshield(i, 9, 25); };
         }
     } else {
         for (int i : ROWS_1_TO_5) {
             OnWave(20) At(-750 + 751 * 2)[=] { Use_Meatshield(i, 9, 25); };
             OnWave(20) At(-750 + 751)[=] { Use_Meatshield(i, 9, 25); };
-            OnWave(20) At(-750)[=] { Use_Meatshield(i, 8, 25); };
+            OnWave(20) At(-750) Shovel(3, 9);
+            OnWave(20) At(-750)[=] {
+                Use_Meatshield(i, 8, 25);
+            };
         }
     }
 
