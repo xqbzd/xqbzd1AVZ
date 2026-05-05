@@ -1,6 +1,6 @@
-#include "ShowWavelength/ShowWavelength.h"
 #include "../SmartRemove.h"
 #include "../common.h"
+#include "ShowWavelength/ShowWavelength.h"
 #include <array>
 #include <vector>
 
@@ -13,7 +13,8 @@ constexpr int LIMIT_X = PAD_COL * 80 + 30 + 40 + 1;
 
 constexpr std::array<int, 4> meatshieldHYKscq = {20, 40, 75, 60};
 constexpr std::array<int, 4> meatshieldHYBscq = {0, 100, 150, 400};
-constexpr std::array<float, 4> meatshieldbantimescq = {0.65f, 0.65f, 0.65f, 0.9f};
+constexpr std::array<float, 4> meatshieldbantimescqS = {0.2f, 0.2f, 0.2f, 0.0f};
+constexpr std::array<float, 4> meatshieldbantimescqL = {0.65f, 0.65f, 0.65f, 0.9f};
 constexpr std::array<int, 4> meatshieldGLKscq = {0, 5, 10, 5};
 constexpr std::array<int, 4> meatshieldGLBscq = {0, 200, 400, 600};
 constexpr std::array<int, 4> meatshieldCGCscq = {0, 30, 20, 10};
@@ -25,7 +26,8 @@ constexpr std::array<int, 2> START_COLS = {9, 8};
 
 std::array<int, ROW_COUNT> meatshieldHYK = {};
 std::array<int, ROW_COUNT> meatshieldHYB = {};
-std::array<float, ROW_COUNT> meatshieldbantime = {};
+std::array<float, ROW_COUNT> meatshieldbantimeS = {};
+std::array<float, ROW_COUNT> meatshieldbantimeL = {};
 std::array<int, ROW_COUNT> meatshieldGLK = {};
 std::array<int, ROW_COUNT> meatshieldGLB = {};
 std::array<int, ROW_COUNT> meatshieldCGC = {};
@@ -97,7 +99,8 @@ void Logic() {
         meatshieldHYB[row] = meatshieldHYBscq[gloomCount];
         meatshieldGLK[row] = meatshieldGLKscq[gloomCount];
         meatshieldGLB[row] = meatshieldGLBscq[gloomCount];
-        meatshieldbantime[row] = meatshieldbantimescq[gloomCount];
+        meatshieldbantimeS[row] = meatshieldbantimescqS[gloomCount];
+        meatshieldbantimeL[row] = meatshieldbantimescqL[gloomCount];
         meatshieldCGC[row] = (hasGloom7[row] ? 1 : 0) * meatshieldCGCscq[gloomCount];
     }
 
@@ -165,7 +168,7 @@ void Logic() {
 
     std::array<bool, ROW_COUNT> banRow = {};
     for (auto& Zombie : zombies) {
-        if (IsGiant(Zombie.type) && ValidRow(Zombie.row) && LIMIT_X < Zombie.abscissa && Zombie.abscissa < LIMIT_X + 50 && Zombie.state == 70 && 0.1f <= Zombie.circulationRate && Zombie.circulationRate <= meatshieldbantime[Zombie.row])
+        if (IsGiant(Zombie.type) && ValidRow(Zombie.row) && LIMIT_X < Zombie.abscissa && Zombie.abscissa < LIMIT_X + 50 && Zombie.state == 70 && meatshieldbantimeS[Zombie.row] <= Zombie.circulationRate && Zombie.circulationRate <= meatshieldbantimeL[Zombie.row])
             banRow[Zombie.row] = true;
     }
 
