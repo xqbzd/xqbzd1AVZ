@@ -1,6 +1,6 @@
 // LI5HDH3tBiZ/13rXcldAXJjACH/tATT/lA7S4QTFwRTFwVY0ZZXhbIH0zVdU/ipHCVI=
+#include "../SmartRemove.h"
 #include "ShowWavelength/ShowWavelength.h"
-#include "SmartRemove.h"
 #include <algorithm>
 #include <avz.h>
 #include <cfloat>
