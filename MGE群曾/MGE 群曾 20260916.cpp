@@ -425,13 +425,15 @@ void BalloonCaption() {
             for (const auto& Grid : BloverPositions) {
                 if (GiantWillSmash(Grid.row, Grid.col) || HasGrave(Grid.row, Grid.col) || FastPlantIndex(Grid.row, Grid.col) >= 0)
                     continue;
-                SafeCard(ABLOVER, Grid.row, Grid.col);
+                if (SafeCard(ABLOVER, Grid.row, Grid.col))
+                    return;
             }
             for (const auto& Grid : BloverPositions) {
                 if (GiantWillSmash(Grid.row, Grid.col) || HasGrave(Grid.row, Grid.col) || FastPlantIndex(Grid.row, Grid.col) < 0)
                     continue;
                 ARemovePlant(Grid.row, Grid.col);
                 SafeCard(ABLOVER, Grid.row, Grid.col, 51);
+                return;
             }
         }
     }
