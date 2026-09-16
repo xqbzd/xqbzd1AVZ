@@ -932,7 +932,7 @@ void AScript() {
     auto Zombie_Type = AGetMainObject()->ZombieTypeList();
     const int SelectSun = AGetMainObject()->Sun();
 
-    if (PlantCnt({AGLOOM_SHROOM}) < 9 || SelectSun >= 5000 || ((Zombie_Type[AJACK_IN_THE_BOX_ZOMBIE] || Zombie_Type[AZOMBIE]) && SelectSun >= 2000))
+    if (PlantCnt({AGLOOM_SHROOM}) < 9 || SelectSun >= 5000 || ((Zombie_Type[AJACK_IN_THE_BOX_ZOMBIE] || Zombie_Type[AZOMBONI]) && SelectSun >= 2000))
         Cardlist.push_back(AGLOOM_SHROOM);
     if (Zombie_Type[AZOMBONI])
         Cardlist.push_back(ASPIKEWEED);
