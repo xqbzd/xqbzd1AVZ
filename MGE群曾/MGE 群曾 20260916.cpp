@@ -382,7 +382,8 @@ bool SafeCard(APlantType PlantType, int Row, int Col, int NeedTime = 99, int Sho
         if (Zombie.Type() == AJACK_IN_THE_BOX_ZOMBIE && Zombie.State() == 16 && PredictExplode(&Zombie, Row, Col, PlantType) && Zombie.StateCountdown() <= NeedTime)
             return false; // 小丑倒计时≤NeedTime，本帧放卡会被炸，直接不放卡
     }
-    ACard(PlantType, Row, Col); // 查完小丑后发现一切正常，本帧立即用卡
+    if (ACard(PlantType, Row, Col) == nullptr)
+        return false;
     if (ShovelDelay != 0)
         AConnect(ANowDelayTime(ShovelDelay), [=] { ARemovePlant(Row, Col, PlantType); }); // 以种植时间为参照进行延迟铲除
     return true;
