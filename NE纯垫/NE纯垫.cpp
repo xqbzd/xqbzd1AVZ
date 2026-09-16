@@ -3,7 +3,8 @@
 #include "ShowWavelength/ShowWavelength.h"
 #include <array>
 #include <vector>
-
+ALogger<AConsole> consoleLogger;
+bool tickskipcontroller = true;
 // LI5HzH3tAiZ/13pXSFw4Ud0cOkEMn+RCdrbkRlg5VuJS+FkM33DmRnXW/R9UlzBUrVROhFY=
 
 namespace {
@@ -262,8 +263,8 @@ void AScript() {
     Cardlist.push_back(ASUNFLOWER);
     Cardlist.push_back(AGARLIC);
     Cardlist.resize(10);
-    ASelectCards(Cardlist, 1);
-    AConnect([] { return AGetMainObject()->GameClock() % 50 == 1; }, [] { ASkipTick([] { return AGetMainObject()->GameClock() % 50 != 0; }); });
+    ASelectCards(Cardlist, 0);
+    AConnect([] { return AGetMainObject()->GameClock() % 50 == 1; }, [] { ASkipTick([] { return (AGetMainObject()->GameClock() % 50 != 0 && tickskipcontroller); }); });
 
     T1.Start(Logic, ATickRunner::GLOBAL);
     smart_remove.Start();
@@ -290,12 +291,20 @@ void AScript() {
             OnWave(20) At(-750)[=] { Use_Meatshield(i, 8, 25); };
         }
     }
-
+    OnWave(1) At(-599)[=] {
+        tickskipcontroller = true;
+    };
     OnWave(1) At(-20)[=] {
         AMaidCheats::Move();
     };
     OnWave(1) At(20)[=] {
         AMaidCheats::CallPartner();
+    };
+    OnWave(21) At(-200)[=] {
+        consoleLogger.Info("hello");
+        tickskipcontroller = false;
+        ABackToMain();
+        AEnterGame(AAsm::SURVIVAL_ENDLESS_STAGE_3);
     };
 
     static bool isPaused = false;
