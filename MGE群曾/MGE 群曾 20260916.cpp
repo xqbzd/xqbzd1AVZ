@@ -1,4 +1,4 @@
-// LI5HDH3tBiZ/13rXcldAXJjACH/tATT/lA7S4QTFwRTFwVY0ZZXhbIH0zVdU/ipHCVI=
+// LI5HDH3tBib/1HrXeldAXJjACF9AjX7kwjV5ADBxBDDxVAwYNHkaYTyyVFTl6EfQUg==
 #include "../SmartRemove.h"
 #include "ShowWavelength/ShowWavelength.h"
 #include <algorithm>
@@ -206,6 +206,27 @@ void FixGloom(int Row, int Col, bool NeedPumpkin = false) {
             TryCard({AGLOOM_SHROOM}, {{Row, Col}});
     }
 }
+// 五列喷只利用核心补曾、四列补喷之后的空闲卡；红眼关也允许补。
+void FixEdgeFumes() {
+    if (!AIsSeedUsable(AFUME_SHROOM))
+        return;
+    for (const auto& Grid : {AGrid{3, 6}, AGrid{2, 5}, AGrid{4, 5}, AGrid{3, 7}, AGrid{2, 6}, AGrid{4, 6}}) {
+        if (AGetPlantIndex(Grid.row, Grid.col, AGLOOM_SHROOM) < 0)
+            return;
+    }
+    if (AGetPlantIndex(1, 4, AFUME_SHROOM) < 0 || AGetPlantIndex(5, 4, AFUME_SHROOM) < 0)
+        return;
+    for (int Row : {5, 1}) {
+        if (AGetPlantIndex(Row, 5) >= 0
+            || ZombieCnt({AGIGA_GARGANTUAR, AGARGANTUAR}, {}, {Row}, {-1000, 520})
+            || ZombieCnt({AFOOTBALL_ZOMBIE}, {}, {Row}, {-1000, 470}, {90})
+            || ZombieCnt({AZOMBONI, ACATAPULT_ZOMBIE}, {}, {Row}, {-1000, 411}))
+            continue;
+        if (ACard(AFUME_SHROOM, Row, 5) != nullptr)
+            return;
+    }
+}
+
 // 用垫
 void TryMeatshield(int Row, int Col, bool AllowBlover = true, bool AllowSpike = true) {
     for (auto Meatshield : {APUFF_SHROOM, AFLOWER_POT, ASUN_SHROOM, ASCAREDY_SHROOM, ASUNFLOWER, AFUME_SHROOM, ASPIKEWEED, ABLOVER}) {
@@ -395,6 +416,12 @@ std::array<int, ROW_COUNT> meatc = {};
 
 int cardclock = 0;
 
+// 只清普通垫材；未生效的冰、模仿者、灰烬及未吹风三叶草均保留。
+bool CanClearFodder(APlant* Plant) {
+    return Plant && (ARangeIn(Plant->Type(), {APUFF_SHROOM, ASUN_SHROOM, ASCAREDY_SHROOM, ASUNFLOWER, ASPIKEWEED})
+        || (Plant->Type() == ABLOVER && Plant->State() == 2));
+}
+
 void BalloonCaption() {
     static const std::array<AGrid, 10> BloverPositions = {{{1, 5}, {5, 5}, {1, 6}, {5, 6}, {2, 7}, {4, 7}, {1, 4}, {5, 4}, {3, 8}, {3, 9}}};
 
@@ -424,17 +451,23 @@ void BalloonCaption() {
         if ((Zombie.Type() == ABALLOON_ZOMBIE && isSeedUsableOrHolding(ABLOVER)) && (int(Zombie.Abscissa() - BalloonΔX(470, Zombie.Speed(), Zombie.SlowCountdown())) <= -50)) {
 
             for (const auto& Grid : BloverPositions) {
-                if (GiantWillSmash(Grid.row, Grid.col) || HasGrave(Grid.row, Grid.col) || FastPlantIndex(Grid.row, Grid.col) >= 0)
+                if (GiantWillSmash(Grid.row, Grid.col) || HasGrave(Grid.row, Grid.col) || AGetPlantIndex(Grid.row, Grid.col) >= 0)
                     continue;
                 if (SafeCard(ABLOVER, Grid.row, Grid.col))
                     return;
             }
-            for (const auto& Grid : BloverPositions) {
-                if (GiantWillSmash(Grid.row, Grid.col) || HasGrave(Grid.row, Grid.col) || FastPlantIndex(Grid.row, Grid.col) < 0)
-                    continue;
-                ARemovePlant(Grid.row, Grid.col);
-                SafeCard(ABLOVER, Grid.row, Grid.col, 51);
-                return;
+            // 廉价垫材优先，五列喷其次，四列喷最后；实时查询避免同帧缓存过时。
+            for (int Tier : {0, 1, 2}) {
+                for (const auto& Grid : BloverPositions) {
+                    auto Plant = AGetPlantPtr(Grid.row, Grid.col);
+                    const bool CanRemove = Tier == 0 ? CanClearFodder(Plant)
+                        : Plant && Plant->Type() == AFUME_SHROOM && Grid.col == (Tier == 1 ? 5 : 4);
+                    if (!CanRemove || GiantWillSmash(Grid.row, Grid.col) || HasGrave(Grid.row, Grid.col))
+                        continue;
+                    ARemovePlant(Grid.row, Grid.col);
+                    if (SafeCard(ABLOVER, Grid.row, Grid.col, 51))
+                        return;
+                }
             }
         }
     }
@@ -465,25 +498,30 @@ bool CopyIceGiantDanger(int Row, int Col) {
 }
 
 bool TryPlaceCopyIce(bool AllowShovel) {
-    static const std::array<AGrid, 8> CopyIcePositions = {{{1, 5}, {5, 5}, {1, 4}, {5, 4}, {1, 6}, {5, 6}, {2, 7}, {4, 7}}};
-
+    static const std::array<AGrid, 8> CopyIcePositions = {{{1, 4}, {5, 4}, {1, 6}, {5, 6}, {2, 7}, {4, 7}, {1, 5}, {5, 5}}};
+    if (!AIsSeedUsable(AM_ICE_SHROOM))
+        return false;
     for (const auto& Grid : CopyIcePositions) {
-        if (CopyIceGiantDanger(Grid.row, Grid.col) || FastPlantIndex(Grid.row, Grid.col) >= 0)
+        if (CopyIceGiantDanger(Grid.row, Grid.col) || AGetPlantIndex(Grid.row, Grid.col) >= 0)
             continue;
-        if (AAsm::GetPlantRejectType(AM_ICE_SHROOM, Grid.row - 1, Grid.col - 1) != AAsm::NIL)
-            continue;
-        if (!TryCard({AM_ICE_SHROOM}, {{Grid.row, Grid.col}}).empty())
+        // ACard 内部按实际植物类型检查冰道等种植限制，并返回真实结果。
+        if (ACard(AM_ICE_SHROOM, Grid.row, Grid.col) != nullptr)
             return true;
     }
-
-    if (!AllowShovel || !AIsSeedUsable(AM_ICE_SHROOM))
+    if (!AllowShovel)
         return false;
-
-    for (const auto& Grid : CopyIcePositions) {
-        if (CopyIceGiantDanger(Grid.row, Grid.col) || FastPlantIndex(Grid.row, Grid.col) < 0)
-            continue;
-        ARemovePlant(Grid.row, Grid.col);
-        return false;
+    // 先清廉价垫材，再牺牲五列喷；四列喷留给原有200cs后的兜底。
+    for (int Tier : {0, 1}) {
+        for (const auto& Grid : CopyIcePositions) {
+            auto Plant = AGetPlantPtr(Grid.row, Grid.col);
+            const bool CanRemove = Tier == 0 ? CanClearFodder(Plant)
+                : Plant && Plant->Type() == AFUME_SHROOM && Grid.col == 5;
+            if (!CanRemove || CopyIceGiantDanger(Grid.row, Grid.col))
+                continue;
+            ARemovePlant(Grid.row, Grid.col);
+            if (ACard(AM_ICE_SHROOM, Grid.row, Grid.col) != nullptr)
+                return true;
+        }
     }
     return false;
 }
@@ -491,17 +529,14 @@ bool TryPlaceCopyIce(bool AllowShovel) {
 bool TryFallbackCopyIce() {
     if (!AIsSeedUsable(AM_ICE_SHROOM))
         return false;
-
     for (int Row : {1, 5}) {
-        if (CopyIceGiantDanger(Row, 4))
+        auto Plant = AGetPlantPtr(Row, 4);
+        if (CopyIceGiantDanger(Row, 4)
+            || (Plant && Plant->Type() != AFUME_SHROOM && !CanClearFodder(Plant)))
             continue;
-        for (auto& Plant : Plants) {
-            if (Plant.Row() == Row - 1 && Plant.Col() == 3 && Plant.Type() != APUMPKIN) {
-                ARemovePlant(Row, 4, Plant.Type());
-                return false;
-            }
-        }
-        if (AAsm::GetPlantRejectType(AM_ICE_SHROOM, Row - 1, 3) == AAsm::NIL && !TryCard({AM_ICE_SHROOM}, {{Row, 4}}).empty())
+        if (Plant)
+            ARemovePlant(Row, 4);
+        if (ACard(AM_ICE_SHROOM, Row, 4) != nullptr)
             return true;
     }
     return false;
@@ -671,8 +706,17 @@ void Logic() {
     // 窝瓜
     if (NoGigaInLevel && !Zombie_Type[AGARGANTUAR] && !Zombie_Type[AFOOTBALL_ZOMBIE]) {
     } else if (((ZombieCnt({AGIGA_GARGANTUAR, AGARGANTUAR, AFOOTBALL_ZOMBIE}, {}, {3}) == 0) && !(ARangeIn(ANowWave(), {1, 9, 19, 20}))) || ((ARangeIn(ANowWave(), {1, 9, 19, 20})) && (ZombieCnt({}, {}, {3}) - ZombieCnt({ABACKUP_DANCER}, {}, {3}, {800, 1000}) > 0) && (ZombieCnt({AGIGA_GARGANTUAR}, {}, {3}) + ZombieCnt({AGARGANTUAR}, {}, {3}) == 0))) {
-        if (ZombieCnt({AGIGA_GARGANTUAR}, {}, {1}, {0, 520}) > 0)
-            TryCard({ASQUASH}, {{1, 5}});
+        if (ZombieCnt({AGIGA_GARGANTUAR}, {}, {1}, {0, 520}) > 0 && AIsSeedUsable(ASQUASH)
+            && TryCard({ASQUASH}, {{1, 6}, {1, 5}}).empty()) {
+            for (int Col : {6, 5}) {
+                auto Plant = AGetPlantPtr(1, Col);
+                if (!CanClearFodder(Plant) && !(Col == 5 && Plant && Plant->Type() == AFUME_SHROOM))
+                    continue;
+                ARemovePlant(1, Col);
+                if (ACard(ASQUASH, 1, Col) != nullptr)
+                    break;
+            }
+        }
     } else {
         if (NoGigaInLevel && !Zombie_Type[AGARGANTUAR]) {
             TryCard({ASQUASH}, {{3, 8}, {3, 9}});
@@ -865,6 +909,8 @@ void Logic() {
     }
 
     // 补喷
+    // 固定四喷版本：原偷阳光菇逻辑保留，暂不执行。
+    /*
     const bool HasJackOrGigaInLevel = Zombie_Type[AJACK_IN_THE_BOX_ZOMBIE] || Zombie_Type[AGIGA_GARGANTUAR];
     const bool UseSunShroom = AGetCardIndex(ASUN_SHROOM) >= 0 && !HasJackOrGigaInLevel;
     if (UseSunShroom) {
@@ -884,6 +930,8 @@ void Logic() {
         }
         TryCard({AFUME_SHROOM}, {{5, 4}, {1, 4}});
     }
+    */
+    TryCard({AFUME_SHROOM}, {{5, 4}, {1, 4}});
 
     // 秒炸
     if (ZombieCnt({AGIGA_GARGANTUAR}) - ZombieCnt({AGIGA_GARGANTUAR}, {}, {1}) - ZombieCnt({AGIGA_GARGANTUAR}, {}, {5}) == 0 && ZombieCnt({AGARGANTUAR}, {}, {3}) == 0) {
@@ -904,15 +952,20 @@ void Logic() {
     // 自动吹气球
     BalloonCaption();
 
+    // 原五列偷阳光菇逻辑保留，固定四喷版本暂不执行。
+    /*
     // 偷花
     if (NoGiga && !HasFootball) {
         TryCard({ASUN_SHROOM}, {{1, 5}, {5, 5}});
         TryCard({ASUN_SHROOM}, {});
     }
 
+    */
+
     // 补花
     TryCard({ASUNFLOWER}, {{1, 1}, {3, 1}, {5, 1}});
     TryCard({ATWIN_SUNFLOWER}, {{1, 1}, {3, 1}, {5, 1}});
+    FixEdgeFumes();
 }
 
 ATickRunner T1;
